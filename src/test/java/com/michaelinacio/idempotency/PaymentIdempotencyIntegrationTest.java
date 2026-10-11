@@ -20,6 +20,7 @@ class PaymentIdempotencyIntegrationTest {
 
     @Test
     void sameKeyAndSamePayloadReplaysOriginalResponse() throws Exception {
+        int before = jdbc.queryForObject("SELECT COUNT(*) FROM payments", Integer.class);
         String key = "replay-test-001";
         String payload = "{\"amount\":149.90,\"currency\":\"BRL\"}";
 
@@ -35,7 +36,7 @@ class PaymentIdempotencyIntegrationTest {
                 .andExpect(header().string("Idempotency-Replayed", "true"))
                 .andExpect(content().json(first));
 
-        org.junit.jupiter.api.Assertions.assertEquals(1,
+        org.junit.jupiter.api.Assertions.assertEquals(before + 1,
                 jdbc.queryForObject("SELECT COUNT(*) FROM payments", Integer.class));
     }
 
