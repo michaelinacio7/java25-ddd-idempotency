@@ -14,7 +14,8 @@ API de referência para transferências internas entre contas, com débito/créd
 - Débito e crédito no mesmo commit do PostgreSQL.
 - Registro do pagamento e das duas partidas de ledger (DEBIT/CREDIT).
 - Persistência da resposta idempotente e evento outbox na mesma transação.
-- Mapeamento inicial de erros de domínio para respostas HTTP.
+- Testes de integração adicionados com PostgreSQL real via Testcontainers para concorrência, replay idempotente e conflito de payload.
+- Workflow GitHub Actions para executar Maven com Java 25.
 
 ## Arquitetura
 
@@ -30,20 +31,25 @@ API de referência para transferências internas entre contas, com débito/créd
 
 A migration Flyway V1__banking_ledger.sql define clientes, contas, pagamentos, transações/partidas do ledger, registros idempotentes e outbox.
 
-## Execução local
+## Executar testes
 
-Requisitos: JDK 25, Maven e Docker.
+Requisitos: JDK 25, Maven e Docker em execução.
+
+    mvn --batch-mode verify
+
+Os testes de transferência sobem um PostgreSQL 16 descartável por meio do Testcontainers. O workflow .github/workflows/build.yml também executa essa verificação em pushes e pull requests. A execução precisa ser confirmada pelo resultado do CI; não marque o projeto como validado até que o workflow fique verde.
+
+## Executar localmente
 
     docker compose up -d
 
-A configuração local e o datasource precisam ser apontados para o PostgreSQL e o Flyway habilitado conforme .env.example. A configuração padrão atual ainda usa H2 em memória para o fluxo legado, então a execução da transferência exige configurar explicitamente PostgreSQL/Flyway antes de testar.
+A configuração local e o datasource precisam ser apontados para o PostgreSQL e o Flyway habilitado conforme .env.example. A configuração padrão ainda usa H2 em memória para o fluxo legado, então a execução da transferência exige configurar explicitamente PostgreSQL/Flyway antes de testar.
 
 ## Pendências antes de considerar pronto
 
 - Configurar Spring Security / OAuth2 Resource Server com emissor JWT confiável.
 - Garantir configuração local completa para PostgreSQL/Flyway e adicionar dados de sandbox de forma segura.
-- Criar testes de integração com PostgreSQL real para saldo insuficiente, idempotência, concorrência e rollback.
-- Executar mvn test com JDK 25 e corrigir qualquer falha de compilação/execução.
+- Confirmar no CI os testes com PostgreSQL real, incluindo concorrência, idempotência e rollback.
 - Implementar publisher da outbox, endpoints de consulta, OpenAPI, rate limiting, métricas e logs estruturados.
 - Fazer revisão de segurança independente antes de qualquer uso fora do sandbox.
 
