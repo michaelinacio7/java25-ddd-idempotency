@@ -27,7 +27,7 @@ public class CreatePaymentService {
     @Transactional
     public Result execute(String key, CreatePaymentCommand command) {
         if (key == null || key.isBlank()) return error(400, "IDEMPOTENCY_KEY_REQUIRED");
-        if (command == null || command.amount() == null || command.currency() == null)
+        if (command == null || command.amount() == null || command.currency() == null || command.amount().signum() <= 0)
             return error(400, "INVALID_PAYMENT");
 
         String fingerprint = fingerprint(command);
