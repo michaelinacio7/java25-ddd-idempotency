@@ -1,32 +1,37 @@
-# Payment API Contract (target)
+# API contract
 
-## POST /api/v1/payments
+## POST /api/v1/transfers
 
-Headers: Authorization: Bearer <token>, Idempotency-Key: <unique key>, Content-Type: application/json.
+Implemented sandbox endpoint for internal account-to-account transfers.
 
-Request example:
+Headers:
+- Authorization: Bearer <token> (the hosting environment must authenticate the request and populate the Java Principal; this repository does not yet configure a JWT issuer/resource server).
+- Idempotency-Key: <unique key>
+- Content-Type: application/json
 
-    {"sourceAccountId":"UUID","destinationAccountId":"UUID","amount":"25.90","currency":"BRL","description":"Optional description"}
+Request:
 
-Money is represented as a decimal string to avoid client-side floating-point loss. Server validates currency scale and canonical decimal representation.
+    {"sourceAccountId":"uuid-da-conta-origem","destinationAccountId":"uuid-da-conta-destino","amount":25.90,"currency":"BRL"}
 
-Expected responses:
-- 201: created payment, first successful execution.
-- 200: replay of stored response for same scoped key and request hash.
-- 400: malformed JSON or missing/invalid fields.
-- 401: missing or invalid authentication.
-- 403: caller lacks permission to use source account.
-- 409: key reused with different request data or request still processing.
-- 422: insufficient funds, closed/frozen account, unsupported currency or invalid precision.
-- 429: rate limit exceeded.
-- 500: unexpected failure; clients may retry with the same key.
+The authenticated principal name is mapped to customers.external_subject. The API does not accept a caller-supplied customer ID. The source account must belong to that customer. The destination account may belong to another customer, but must be active and use the same currency.
 
-Response should include payment ID, status, amount, currency, createdAt and replay metadata. Do not leak internal database errors or whether another customer's account exists.
+Responses:
+- 201 Created: transfer committed.
+- 400 Bad Request: invalid fields, currency or idempotency key.
+- 401 Unauthorized: no principal or no registered customer identity.
+- 409 Conflict: the same idempotency key was reused with a different request fingerprint.
+- 422 Unprocessable Entity: insufficient funds or account not active.
 
-## GET /api/v1/payments/{paymentId}
+The current adapter returns the original transfer for a matching idempotency key. A future API refinement should persist and replay the exact original HTTP status/body and explicitly mark replay metadata.
 
-Requires authentication and authorization to view the payment. Return 404 rather than disclose a resource belonging to another customer.
+## Transaction guarantees implemented
 
-## GET /api/v1/accounts/{accountId}/statement
+The PostgreSQL adapter reserves the scoped idempotency key, locks both accounts in UUID order, checks ownership/status/currency/balance, updates both balances, inserts the payment, inserts matching debit/credit ledger entries, stores the idempotency response and inserts an outbox event in a single database transaction. Any runtime failure rolls back the transaction.
 
-Requires account authorization. Use cursor pagination, stable ordering and a consistent statement snapshot when required.
+## Not yet production-ready
+
+- Authentication provider/JWT resource-server configuration and account-level authorization policies.
+- PostgreSQL integration and concurrency tests, including crash/retry scenarios.
+- A background outbox publisher with retries and operational visibility.
+- Read endpoints for payment status and account statements.
+- Rate limiting, OpenAPI, metrics, structured audit logging and independent security review.
