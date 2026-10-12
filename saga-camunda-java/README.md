@@ -1,32 +1,43 @@
 # Order Saga with Camunda 8 (Java)
 
-Projeto independente de estudo para orquestrar o mesmo fluxo de pedido usando Camunda 8 e BPMN. O processo modela reserva de estoque, cobrança, entrega e caminhos de compensação em caso de falha.
+Projeto de estudo de Saga por orquestração visual com BPMN 2.0 e workers Spring Boot.
 
-## Fluxo
+## Fluxo BPMN
 
-1. Reservar estoque.
-2. Cobrar pagamento.
-3. Reservar entrega.
-4. Se uma etapa falhar, executar as compensações necessárias em ordem inversa e terminar com estado de falha compensada.
+Reserva de estoque -> cobrança simulada -> reserva de entrega. O modelo contém um caminho de compensação para estorno e liberação do estoque quando a etapa de entrega dispara o erro BPMN configurado. O modelo está em `src/main/resources/processes/order-saga.bpmn`.
 
-## Tecnologias
+## Requisitos
 
-- Java 25
-- Spring Boot 3.5
-- Camunda 8 Spring Boot Starter
-- BPMN 2.0
-- Maven
+- JDK 25
+- Maven 3.9+
+- Camunda 8 self-managed acessível por REST/gRPC
+- Camunda Modeler (opcional, para visualizar o BPMN)
+
+## Configuração
+
+Defina `CAMUNDA_GRPC_ADDRESS` e `CAMUNDA_REST_ADDRESS`. A configuração padrão usa endpoints locais sem autenticação, adequada apenas para desenvolvimento local isolado. Para cluster remoto, configure autenticação e TLS e nunca armazene segredos no Git.
+
+## Workers
+
+Os workers em `OrderWorkers` são stubs de sandbox. Não movimentam dinheiro nem integram com estoque/transportadora reais. Cada integração real deverá usar chave de idempotência, timeouts, retries e compensação segura.
 
 ## Executar
 
-Este projeto precisa de um cluster Camunda 8 local ou remoto. Configure endpoint e autenticação em variáveis de ambiente; não comite tokens ou credenciais. O BPMN é mantido em `src/main/resources/processes`.
+```bash
+mvn test
+mvn spring-boot:run
+```
 
-## Conceitos demonstrados
+O processo BPMN precisa ser publicado no cluster Camunda antes de iniciar instâncias. A implantação automática do BPMN e os testes com Camunda Process Test ainda não estão configurados.
 
-- Orquestração visual com BPMN.
-- Service Tasks processadas por workers Java.
-- Boundary/error events para caminhos de falha.
-- Compensações como tarefas explícitas e idempotentes.
-- Retries, incidentes e observabilidade do processo no Camunda Operate.
+## Limitações atuais
 
-Referências: [Camunda Spring Boot Starter](https://docs.camunda.io/docs/apis-tools/camunda-spring-boot-starter/getting-started/) e [Camunda 8 APIs](https://docs.camunda.io/docs/apis-tools/working-with-apis-tools/).
+- Não há endpoint REST para iniciar o processo.
+- Os workers retornam resultados simulados.
+- A conexão padrão não usa autenticação e deve ficar restrita ao ambiente local.
+- O caminho de compensação BPMN precisa ser exercitado com um worker que lance explicitamente o erro de negócio esperado.
+- O build ainda precisa ser executado no CI.
+
+Referências:
+- [Camunda Spring Boot Starter](https://docs.camunda.io/docs/apis-tools/camunda-spring-boot-starter/getting-started/)
+- [Camunda 8 APIs](https://docs.camunda.io/docs/apis-tools/working-with-apis-tools/)
