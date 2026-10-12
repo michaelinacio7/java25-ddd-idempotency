@@ -54,3 +54,13 @@ A configuração local e o datasource precisam ser apontados para o PostgreSQL e
 - Fazer revisão de segurança independente antes de qualquer uso fora do sandbox.
 
 Consulte docs/api-contract.md, docs/architecture.md e docs/production-readiness.md.
+
+
+## Projetos Saga Pattern
+
+Também estão disponíveis dois laboratórios separados por diretório:
+
+- [Saga com Temporal](saga-temporal-java/README.md): workflow durável com Temporal Java SDK e compensações.
+- [Saga com Camunda 8](saga-camunda-java/README.md): orquestração BPMN 2.0 e workers Java.
+
+Os dois exemplos estão em desenvolvimento e usam operações simuladas. Consulte os respectivos READMEs para requisitos e limitações.
