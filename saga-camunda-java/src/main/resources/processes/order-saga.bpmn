@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_OrderSaga"
+                  targetNamespace="https://example.com/saga/order">
+  <bpmn:error id="Error_OrderSaga" name="Order step failed" errorCode="ORDER_STEP_FAILED"/>
+  <bpmn:process id="order-saga" name="Order Saga" isExecutable="true">
+    <bpmn:startEvent id="StartEvent" name="Order received">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="ReserveInventory" name="Reserve inventory" camunda:type="external" xmlns:camunda="http://camunda.org/schema/1.0/bpmn">
+      <bpmn:extensionElements/>
+      <bpmn:incoming>Flow_1</bpmn:incoming><bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="ChargePayment" name="Charge payment" xmlns:camunda="http://camunda.org/schema/1.0/bpmn">
+      <bpmn:extensionElements/>
+      <bpmn:incoming>Flow_2</bpmn:incoming><bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="ReserveDelivery" name="Reserve delivery" xmlns:camunda="http://camunda.org/schema/1.0/bpmn">
+      <bpmn:extensionElements/>
+      <bpmn:incoming>Flow_3</bpmn:incoming><bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="SuccessEnd" name="Order confirmed">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent" targetRef="ReserveInventory"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ReserveInventory" targetRef="ChargePayment"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ChargePayment" targetRef="ReserveDelivery"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="ReserveDelivery" targetRef="SuccessEnd"/>
+
+    <bpmn:boundaryEvent id="DeliveryFailure" attachedToRef="ReserveDelivery" name="Delivery failed">
+      <bpmn:outgoing>Flow_5</bpmn:outgoing><bpmn:errorEventDefinition errorRef="Error_OrderSaga"/>
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="RefundPayment" name="Compensate payment">
+      <bpmn:incoming>Flow_5</bpmn:incoming><bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:extensionElements><zeebe:taskDefinition xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" type="refund-payment"/></bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="ReleaseInventory" name="Compensate inventory">
+      <bpmn:incoming>Flow_6</bpmn:incoming><bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:extensionElements><zeebe:taskDefinition xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" type="release-inventory"/></bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="CompensatedEnd" name="Order compensated"><bpmn:incoming>Flow_7</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="DeliveryFailure" targetRef="RefundPayment"/>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="RefundPayment" targetRef="ReleaseInventory"/>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="ReleaseInventory" targetRef="CompensatedEnd"/>
+  </bpmn:process>
+</bpmn:definitions>
